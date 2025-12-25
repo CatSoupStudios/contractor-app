@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Contractor App",
+    "slug": "contractor-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "contractor-app",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "bundleIdentifier": "com.catsoupstudios.contractorapp",
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to upload project images and update your profile picture.",
+        "NSCameraUsageDescription": "This app needs camera access to take photos of your construction projects.",
+        "NSContactsUsageDescription": "This app needs access to your contacts to help you find and invite team members.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your library.",
+        "CFBundleDisplayName": "Contractor App",
+        "CFBundleDevelopmentRegion": "en"
+      }
+    },
+    "android": {
+      "package": "com.catsoupstudios.contractorapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_CONTACTS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to upload project images."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Contractor App to access your contacts to help you find team members."
+        }
+      ]
+    ]
+  }
+}

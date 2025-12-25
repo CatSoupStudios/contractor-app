@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+    function isProjectOwner() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+    function isPublicProject() {
+      return (resource.data.visibility == null) || (resource.data.visibility == "public");
+    }
+
+    // 1) PROFILES
+    match /profiles/{userId} {
+      allow read: if signedIn();
+      allow create: if isOwner(userId);
+      allow update: if signedIn() && (
+        isOwner(userId) || 
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount']) &&
+          (
+             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['followersCount']) ||
+             request.resource.data.followersCount == resource.data.followersCount + 1 ||
+             request.resource.data.followersCount == resource.data.followersCount - 1
+          ) &&
+          (
+             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['followingCount']) ||
+             request.resource.data.followingCount == resource.data.followingCount + 1 ||
+             request.resource.data.followingCount == resource.data.followingCount - 1
+          )
+        )
+      );
+      
+      match /crew/{memberId} {
+        allow read, write: if isOwner(userId);
+        allow delete: if signedIn() && request.auth.uid == memberId;
+      }
+
+      match /ignored_suggestions/{suggestionId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // 2) PROJECTS
+    match /projects/{projectId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && (request.resource.data.visibility == "public" || request.resource.data.visibility == "private");
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && (request.resource.data.visibility == "public" || request.resource.data.visibility == "private");
+      allow delete: if signedIn()
+        && resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (isProjectOwner() || isPublicProject());
+    }
+
+    // 3) ESTIMATES
+    match /estimates/{estimateId} {
+      allow read, update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // 4) SERVICES
+    match /services/{serviceId} {
+      allow read, update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // 5) CLIENTS
+    match /clients/{clientId} {
+      allow read, update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // 6) FOLLOWERS
+    match /followers/{userId}/list/{followerId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && (request.auth.uid == followerId || isOwner(userId));
+    }
+    
+    // 7) NOTIFICATIONS
+    match /notifications/{userId}/items/{notificationId} {
+      allow read, delete: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow create: if signedIn() && request.resource.data.fromUserId == request.auth.uid;
+    }
+
+    // 8) POSTS
+    match /posts/{postId} {
+      allow read: if signedIn() && (
+        resource.data.visibility == "public" || 
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['worksCount'])
+      );
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+
+      match /works/{workUserId} {
+        allow read: if signedIn();
+        allow write: if signedIn() && request.auth.uid == workUserId;
+      }
+    }
+
+    // 9) CHATS (Messaging System) - DEFINITIVE FIX
+    match /chats/{chatId} {
+      // Allow read/query if UID is in participants array OR in the chatId string
+      allow read: if signedIn() && (
+        (resource != null && request.auth.uid in resource.data.participants) ||
+        chatId.matches(".*" + request.auth.uid + ".*")
+      );
+      
+      // Allow creation/updates if sender is a participant
+      allow write: if signedIn() && (
+        // Update existing chat
+        (resource != null && request.auth.uid in resource.data.participants) ||
+        // Create new chat (participants must be in the request data)
+        (resource == null && request.auth.uid in request.resource.data.participants)
+      );
+      
+      match /messages/{messageId} {
+        // Direct access to messages if the chatId correctly identifies the user
+        // Using split logic or simple matches for maximum efficiency
+        allow read, write: if signedIn() && (
+           chatId.matches(".*" + request.auth.uid + ".*")
+        );
+      }
+    }
+  }
+}
